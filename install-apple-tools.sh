@@ -164,30 +164,109 @@ check_macos_version() {
 # URL Apple Configurator 2 в Mac App Store
 readonly APPLE_CONFIGURATOR_APP_STORE_URL="https://apps.apple.com/app/apple-configurator-2/id1037126344"
 readonly APPLE_CONFIGURATOR_BUNDLE_ID="com.apple.configurator2"
+readonly HOMEBREW_INSTALL_URL="https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh"
+
+# Проверка и установка Homebrew
+ensure_homebrew() {
+    log_step "Проверка Homebrew"
+    
+    if command -v brew &>/dev/null; then
+        local version
+        version="$(brew --version | head -n1)"
+        log_ok "Homebrew уже установлен: ${version}"
+        return 0
+    fi
+
+    log_warn "Homebrew не найден"
+    
+    if [[ "${DRY_RUN}" == true ]]; then
+        log_warn "[DRY-RUN] Пропуск установки Homebrew"
+        return 1
+    fi
+
+    log_info "Установка Homebrew..."
+    run_cmd "/bin/bash -c \"$(curl -fsSL ${HOMEBREW_INSTALL_URL})\"" || {
+        log_error "Не удалось установить Homebrew"
+        log_error "Попробуйте вручную: /bin/bash -c \"$(curl -fsSL ${HOMEBREW_INSTALL_URL})\""
+        return 1
+    }
+
+    # Добавляем brew в PATH для текущей сессии (Apple Silicon)
+    if [[ -f "/opt/homebrew/bin/brew" ]]; then
+        eval "$(/opt/homebrew/bin/brew shellenv)"
+    elif [[ -f "/usr/local/bin/brew" ]]; then
+        eval "$(/usr/local/bin/brew shellenv)"
+    fi
+
+    if command -v brew &>/dev/null; then
+        log_ok "Homebrew успешно установлен"
+        return 0
+    else
+        log_error "Homebrew установлен, но не найден в PATH"
+        return 1
+    fi
+}
+
+# Установка mas (Mac App Store CLI)
+ensure_mas() {
+    log_step "Проверка mas (Mac App Store CLI)"
+
+    if command -v mas &>/dev/null; then
+        local version
+        version="$(mas version 2>/dev/null || echo "unknown")"
+        log_ok "mas уже установлен: ${version}"
+        return 0
+    fi
+
+    log_warn "mas не найден"
+
+    # Сначала убеждаемся, что Homebrew есть
+    if ! ensure_homebrew; then
+        log_error "Homebrew не установлен, не могу установить mas"
+        return 1
+    fi
+
+    if [[ "${DRY_RUN}" == true ]]; then
+        log_warn "[DRY-RUN] Пропуск установки mas"
+        return 1
+    fi
+
+    log_info "Установка mas через Homebrew..."
+    run_cmd "brew install mas" || {
+        log_error "Не удалось установить mas"
+        return 1
+    }
+
+    if command -v mas &>/dev/null; then
+        log_ok "mas успешно установлен"
+        return 0
+    else
+        log_error "mas установлен, но не найден в PATH"
+        return 1
+    fi
+}
 
 # Установка Apple Configurator через mas (Mac App Store CLI) или открытие App Store
 install_apple_configurator() {
     log_step "Попытка установки Apple Configurator"
 
-    # Проверяем, установлен ли mas (Mac App Store CLI)
-    if command -v mas &>/dev/null; then
-        log_info "Найден mas (Mac App Store CLI), пытаемся установить..."
-        run_cmd "mas install 1037126344" || {
-            log_warn "Установка через mas не удалась (возможно, не авторизованы в App Store)"
-            log_info "Открываем страницу App Store для ручной установки..."
-            run_cmd "open '${APPLE_CONFIGURATOR_APP_STORE_URL}'"
-            return 1
-        }
-        log_ok "Apple Configurator установлен через mas"
-        return 0
-    else
-        log_info "mas (Mac App Store CLI) не установлен"
-        log_info "Установите mas: brew install mas"
-        log_info "Или откройте App Store вручную"
-        log_step "Открываем страницу Apple Configurator в App Store..."
+    # Сначала убеждаемся, что mas установлен
+    if ! ensure_mas; then
+        log_warn "Не удалось подготовить mas"
+        log_info "Открываем страницу App Store для ручной установки..."
         run_cmd "open '${APPLE_CONFIGURATOR_APP_STORE_URL}'"
         return 1
     fi
+
+    log_info "Найден mas (Mac App Store CLI), пытаемся установить..."
+    run_cmd "mas install 1037126344" || {
+        log_warn "Установка через mas не удалась (возможно, не авторизованы в App Store)"
+        log_info "Открываем страницу App Store для ручной установки..."
+        run_cmd "open '${APPLE_CONFIGURATOR_APP_STORE_URL}'"
+        return 1
+    }
+    log_ok "Apple Configurator установлен через mas"
+    return 0
 }
 
 check_apple_configurator() {
