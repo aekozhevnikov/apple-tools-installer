@@ -12,11 +12,24 @@ set -euo pipefail
 # Константы и конфигурация
 #-------------------------------------------------------------------------------
 readonly SCRIPT_NAME="$(basename "${0}")"
-readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-readonly PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+
+# Определение директорий: при запуске через curl | bash BASH_SOURCE[0] не установлен
+if [[ -n "${BASH_SOURCE[0]:-}" && "${BASH_SOURCE[0]}" != "${0}" ]]; then
+    # Скрипт запущен как файл
+    readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    readonly PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+    readonly APPLE_DOWNLOADER_DIR="${PROJECT_ROOT}/appleDownloader"
+    readonly LOG_DIR="${PROJECT_ROOT}/logs"
+else
+    # Скрипт запущен через pipe (curl | bash) — используем временные пути
+    readonly SCRIPT_DIR="${HOME}/.local/share/install-apple-tools"
+    readonly PROJECT_ROOT="${SCRIPT_DIR}"
+    readonly APPLE_DOWNLOADER_DIR="${PROJECT_ROOT}/appleDownloader"
+    readonly LOG_DIR="${PROJECT_ROOT}/logs"
+fi
+
 readonly DOWNLOAD_DIR="${HOME}/Downloads"
-readonly APPLE_DOWNLOADER_DIR="${PROJECT_ROOT}/appleDownloader"
-readonly LOG_FILE="${PROJECT_ROOT}/logs/install-apple-tools-$(date +%Y%m%d-%H%M%S).log"
+readonly LOG_FILE="${LOG_DIR}/install-apple-tools-$(date +%Y%m%d-%H%M%S).log"
 
 # Версии и URL
 readonly IPATOOL_VERSION="2.3.2-sapfix.2"
@@ -42,7 +55,7 @@ readonly NC='\033[0m' # No Color
 #-------------------------------------------------------------------------------
 # Утилиты логирования
 #-------------------------------------------------------------------------------
-mkdir -p "$(dirname "${LOG_FILE}")"
+mkdir -p "${LOG_DIR}"
 
 log() {
     local level="${1}"
@@ -596,7 +609,8 @@ main() {
     log_info "Лог сохранён в: ${LOG_FILE}"
 }
 
-# Запуск только если скрипт выполнен напрямую
-if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+# Запуск: если скрипт запущен как файл (не через pipe) — проверяем BASH_SOURCE
+# Если через pipe (curl | bash) — BASH_SOURCE не установлен, запускаем main всегда
+if [[ -z "${BASH_SOURCE[0]:-}" || "${BASH_SOURCE[0]}" == "${0}" ]]; then
     main "$@"
 fi
