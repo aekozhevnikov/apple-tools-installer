@@ -351,8 +351,14 @@ check_command() {
 
     if command -v "${cmd}" &>/dev/null; then
         local version
-        # Используем timeout для предотвращения зависания (например, ipatool --version)
-        version="$(timeout 5 ${cmd} --version 2>/dev/null | head -n1 || echo "unknown")"
+        # ipatool --version виснет, пропускаем версию для него
+        if [[ "${cmd}" == "ipatool" ]]; then
+            version="installed"
+        elif command -v perl &>/dev/null; then
+            version="$(perl -e 'alarm 3; exec @ARGV' "${cmd}" --version 2>/dev/null | head -n1 || echo "unknown")"
+        else
+            version="$(${cmd} --version 2>/dev/null | head -n1 || echo "unknown")"
+        fi
         log_ok "${name} уже установлен: ${version}"
         return 0
     fi
