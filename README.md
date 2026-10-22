@@ -50,6 +50,62 @@ curl -fsSL https://raw.githubusercontent.com/aekozhevnikov/apple-tools-installer
   brew install mas
   ```
 
+## Установка Git Bash на Windows
+
+Git Bash — это эмулятор терминала, включающий bash и базовые Unix-утилиты. Он поставляется вместе с **Git for Windows**.
+
+### Способ 1: Официальный установщик (рекомендуется)
+
+1. Скачайте установщик с официального сайта: https://git-scm.com/download/win
+2. Запустите `.exe` файл
+3. В настройках установки оставьте значения по умолчанию, **важно**:
+   - ✅ **Use Git from the Windows Command Prompt** (или "Git from the command line and also from 3rd-party software")
+   - ✅ **Use the OpenSSL library**
+   - ✅ **Checkout Windows-style, commit Unix-style line endings**
+   - ✅ **Use MinTTY** (терминал по умолчанию для Git Bash)
+4. После установки откройте **Git Bash** из меню Пуск
+
+### Способ 2: Через winget (Windows 10/11)
+
+```powershell
+# В PowerShell от имени администратора
+winget install --id Git.Git -e --source winget
+```
+
+### Способ 3: Через Chocolatey
+
+```powershell
+# В PowerShell от имени администратора
+choco install git -y
+```
+
+### Способ 4: Через Scoop
+
+```powershell
+scoop install git
+```
+
+### Проверка установки
+
+Откройте **Git Bash** и выполните:
+
+```bash
+bash --version
+# Должно показать что-то вроде: GNU bash, version 5.2.37(1)-release (x86_64-pc-msys)
+
+curl --version
+# Должно показать версию curl
+
+git --version
+# Должно показать версию Git
+```
+
+После этого скрипт запустится в Git Bash так же, как на macOS/Linux:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/aekozhevnikov/apple-tools-installer/main/install-apple-tools.sh | bash -s -- --verbose
+```
+
 ## Логирование
 
 Все действия логируются в:
